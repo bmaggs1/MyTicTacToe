@@ -14,10 +14,10 @@ CIRCLE_WIDTH = 30
 CROSS_WIDTH = 40
 SPACE = SQUARE_SIZE // 8
 
+#Define colors
 WHITE = pygame.Color('white')
 BLACK = pygame.Color('black')
 MAROON = pygame.Color('orangered4')
-GREEN = pygame.Color('green')
 GOLD = pygame.Color('gold2')
 
 # Setup Screen & Board
@@ -35,6 +35,7 @@ def draw_lines():
     pygame.draw.line(screen, BLACK, (SQUARE_SIZE, 0), (SQUARE_SIZE, HEIGHT), LINE_WIDTH)
     pygame.draw.line(screen, BLACK, (2 * SQUARE_SIZE, 0), (2 * SQUARE_SIZE, HEIGHT), LINE_WIDTH)
 
+#Called at the end of the loop for each turn, adds sign to each box
 def draw_figures():
     for row in range(BOARD_ROWS):
         for col in range(BOARD_COLS):
@@ -50,7 +51,7 @@ def mark_square(row, col, player):
     board[row][col] = player
 
 def available_square(row, col):
-    return board[row][col] is None
+    return board[row][col] == None
 
 def is_board_full():
     for row in range(BOARD_ROWS):
@@ -59,21 +60,24 @@ def is_board_full():
                 return False
     return True
 
+#Function returns if the given player has won, and returns that along with how they won
 def check_win(player):
-    # Check rows
+    # check rows
     for row in range(BOARD_ROWS):
         if all([board[row][col] == player for col in range(BOARD_COLS)]):
-            return [True, 0]
+            return [True, 'row']
+        
     # Check columns
     for col in range(BOARD_COLS):
         if all([board[row][col] == player for row in range(BOARD_ROWS)]):
-            return [True, 1]
+            return [True, 'column']
     # Check diagonals
     if all([board[i][i] == player for i in range(BOARD_ROWS)]) or \
             all([board[i][BOARD_COLS - i - 1] == player for i in range(BOARD_ROWS)]):
-        return [True, 2]
-    return [False, 0]
+        return [True, 'diagonal']
+    return [False, None]
 
+#Reset all boxes
 def restart():
     screen.fill(WHITE)
     draw_lines()
@@ -81,8 +85,11 @@ def restart():
         for col in range(BOARD_COLS):
             board[row][col] = None
 
-def draw_diagonal_line(col, color):
-    pass
+def draw_diagonal_line(row, col, color):
+    if row == col and board[0][0] == board[1][1]:
+        pygame.draw.line(screen, color, (15, 15), (WIDTH - 15, HEIGHT - 15), 5)
+    else:
+        pygame.draw.line(screen, color, (WIDTH - 15, 15), (15, HEIGHT - 15), 5)
 
 def draw_vertical_line(col, color):
     pygame.draw.line(screen, color, (col * SQUARE_SIZE + SQUARE_SIZE // 2, 15),
@@ -92,7 +99,7 @@ def draw_horizontal_line(row, color):
     pygame.draw.line(screen, color, (15, row * SQUARE_SIZE + SQUARE_SIZE // 2),
                      (WIDTH - 15, row * SQUARE_SIZE + SQUARE_SIZE // 2), 5)
 
-
+#Main loop handles the game with game events, marking squares, and checking the win conditions
 def main():
     turn = 0
     game_over = False
@@ -105,48 +112,57 @@ def main():
                 sys.exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+                #calculate which box was clicked
                 mouseX = event.pos[0]  # x
                 mouseY = event.pos[1]  # y
-
                 clicked_row = mouseY // SQUARE_SIZE
                 clicked_col = mouseX // SQUARE_SIZE
 
+                #Mark boxes with correct player
                 if available_square(clicked_row, clicked_col):
-                    if turn % 2 == 0:
+                    if turn == 0:
                         mark_square(clicked_row, clicked_col, 'X')
-                        checkWin = check_win('X')
-                        if checkWin[0]:
+                        turn = 1
+
+                        #Check if player has won
+                        win_condition = check_win('X')
+                        if win_condition[0]:
                             game_over = True
-                            if checkWin[1] == 0:
-                                draw_horizontal_line(clicked_col, MAROON)
-                            elif checkWin[1] == 1:
-                                draw_vertical_line(clicked_col, MAROON)
-                            elif checkWin[1] == 2:
-                                draw_diagonal_line(clicked_col, MAROON)
                             print("X wins!")
+                            if win_condition[1] == 'row':
+                                draw_horizontal_line(clicked_row, MAROON)
+                            elif win_condition[1] == 'column':
+                                draw_vertical_line(clicked_col, MAROON)
+                            else:
+                                draw_diagonal_line(clicked_row, clicked_col, MAROON)
                         elif is_board_full():
                             game_over = True
                             print("It's a tie!")
                     else:
                         mark_square(clicked_row, clicked_col, 'O')
-                        if check_win('O'):
+                        turn = 0
+
+                        #Check if player has won
+                        win_condition = check_win('O')
+                        if win_condition[0]:
                             game_over = True
-                            if checkWin[1] == 0:
-                                draw_horizontal_line(clicked_col, GOLD)
-                            elif checkWin[1] == 1:
-                                draw_vertical_line(clicked_col, GOLD)
-                            elif checkWin[1] == 2:
-                                draw_diagonal_line(clicked_col, GOLD)
                             print("O wins!")
+                            if win_condition[1] == 'row':
+                                draw_horizontal_line(clicked_row, GOLD)
+                            elif win_condition[1] == 'column':
+                                draw_vertical_line(clicked_col, GOLD)
+                            else:
+                                draw_diagonal_line(clicked_row, clicked_col, GOLD)
                         elif is_board_full():
                             game_over = True
                             print("It's a tie!")
 
-                    draw_figures()
-                    turn += 1
+                draw_figures()
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r and game_over:
+            #Handle restarting the game
+            if event.type == pygame.KEYDOWN and game_over:
+                print("Restarting...")
+                if event.key == pygame.K_r:
                     restart()
                     game_over = False
                     turn = 0
